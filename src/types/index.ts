@@ -1,5 +1,22 @@
 export type VehicleType = 'van' | 'small_truck' | 'medium_truck' | 'large_truck';
 
+export type CargoScenario = '普通货物' | '家具家电' | '建材' | '食品' | '易碎品' | '搬家' | '其他';
+
+export interface LargeItem {
+  id: string;
+  name: string;
+  icon: string;
+  handlingFee: number;
+  weight?: number;
+  volume?: number;
+  description?: string;
+}
+
+export interface SelectedLargeItem {
+  item: LargeItem;
+  quantity: number;
+}
+
 export type OrderStatus =
   | 'pending'
   | 'assigned'
@@ -53,12 +70,21 @@ export interface FloorFareDetail {
   destSegments: FloorFareSegment[];
 }
 
+export interface LargeItemFareDetail {
+  itemId: string;
+  itemName: string;
+  quantity: number;
+  handlingFee: number;
+  subtotal: number;
+}
+
 export interface FareDetail {
   baseFare: number;
   mileageFare: number;
   floorFare: number;
   floorFareDetail?: FloorFareDetail;
   largeItemFare: number;
+  largeItemFareDetail?: LargeItemFareDetail[];
   totalFare: number;
 }
 
@@ -75,6 +101,7 @@ export interface Order {
   orderNo: string;
   status: OrderStatus;
   cargoType: string;
+  cargoScenario?: CargoScenario;
   weight: number;
   volume: number;
   origin: string;
@@ -87,6 +114,7 @@ export interface Order {
   appointmentTime: Date;
   needHandling: boolean;
   largeItemCount: number;
+  largeItems?: SelectedLargeItem[];
   distance: number;
   totalFare: number;
   fareDetail: FareDetail;
@@ -130,11 +158,13 @@ export interface NewOrderForm {
   destFloor: number;
   destHasElevator: boolean;
   cargoType: string;
+  cargoScenario?: CargoScenario;
   weight: number;
   volume: number;
   vehicleType: VehicleType | null;
   appointmentTime: Date | null;
   needHandling: boolean;
   largeItemCount: number;
+  largeItems?: SelectedLargeItem[];
   distance: number;
 }

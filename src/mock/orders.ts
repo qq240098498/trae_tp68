@@ -1,4 +1,40 @@
-import type { Order, OrderLog } from '@/types';
+import type { Order, OrderLog, LargeItem, SelectedLargeItem } from '@/types';
+
+const mockLargeItems: LargeItem[] = [
+  { id: 'fridge', name: '冰箱', icon: 'Fridge', handlingFee: 80, weight: 0.08, volume: 1.5, description: '双开门/单开门冰箱' },
+  { id: 'washing_machine', name: '洗衣机', icon: 'WashingMachine', handlingFee: 50, weight: 0.06, volume: 0.8, description: '滚筒/波轮洗衣机' },
+  { id: 'sofa', name: '沙发', icon: 'Sofa', handlingFee: 100, weight: 0.1, volume: 3, description: '三人位/组合沙发' },
+  { id: 'mattress', name: '床垫', icon: 'Bed', handlingFee: 60, weight: 0.03, volume: 1.2, description: '1.5米/1.8米床垫' },
+  { id: 'bed', name: '床架', icon: 'BedDouble', handlingFee: 80, weight: 0.08, volume: 1.8, description: '实木/板式床架' },
+  { id: 'wardrobe', name: '衣柜', icon: 'Wardrobe', handlingFee: 120, weight: 0.12, volume: 2.5, description: '实木/板式衣柜' },
+  { id: 'tv', name: '电视', icon: 'Tv', handlingFee: 50, weight: 0.02, volume: 0.5, description: '55寸以上大屏电视' },
+  { id: 'air_conditioner', name: '空调', icon: 'AirVent', handlingFee: 60, weight: 0.04, volume: 0.6, description: '柜机/挂机空调' },
+  { id: 'dining_table', name: '餐桌', icon: 'Table', handlingFee: 70, weight: 0.06, volume: 1.5, description: '实木/玻璃餐桌' },
+  { id: 'desk', name: '书桌', icon: 'Laptop', handlingFee: 50, weight: 0.04, volume: 1, description: '电脑桌/写字台' },
+  { id: 'chair', name: '椅子', icon: 'Armchair', handlingFee: 30, weight: 0.015, volume: 0.5, description: '办公椅/餐椅' },
+];
+
+const getLargeItem = (id: string): LargeItem => {
+  return mockLargeItems.find((item) => item.id === id) || mockLargeItems[0];
+};
+
+const movingLargeItems: SelectedLargeItem[] = [
+  { item: getLargeItem('fridge'), quantity: 1 },
+  { item: getLargeItem('washing_machine'), quantity: 1 },
+  { item: getLargeItem('sofa'), quantity: 1 },
+  { item: getLargeItem('mattress'), quantity: 2 },
+  { item: getLargeItem('bed'), quantity: 1 },
+  { item: getLargeItem('wardrobe'), quantity: 1 },
+  { item: getLargeItem('chair'), quantity: 4 },
+];
+
+const movingLargeItemFareDetail = movingLargeItems.map((selected) => ({
+  itemId: selected.item.id,
+  itemName: selected.item.name,
+  quantity: selected.quantity,
+  handlingFee: Math.max(selected.item.handlingFee, 50),
+  subtotal: Math.max(selected.item.handlingFee, 50) * selected.quantity,
+}));
 
 const baseDate = new Date('2026-06-21T08:00:00');
 
@@ -13,6 +49,54 @@ function createOrderLog(orderId: string, status: OrderLog['status'], remark: str
 }
 
 export const mockOrders: Order[] = [
+  {
+    id: 'o011',
+    orderNo: 'HY2026062100011',
+    status: 'pending',
+    cargoType: '搬家',
+    cargoScenario: '搬家',
+    weight: movingLargeItems.reduce((sum, s) => sum + (s.item.weight || 0) * s.quantity, 0),
+    volume: movingLargeItems.reduce((sum, s) => sum + (s.item.volume || 0) * s.quantity, 0),
+    origin: '北京市朝阳区望京西园三区',
+    originFloor: 6,
+    originHasElevator: false,
+    destination: '北京市昌平区回龙观东大街',
+    destFloor: 11,
+    destHasElevator: true,
+    vehicleType: 'medium_truck',
+    appointmentTime: new Date('2026-06-22T09:00:00'),
+    needHandling: true,
+    largeItemCount: movingLargeItems.reduce((sum, s) => sum + s.quantity, 0),
+    largeItems: movingLargeItems,
+    distance: 22.8,
+    totalFare: 1580,
+    fareDetail: {
+      baseFare: 120,
+      mileageFare: (22.8 - 5) * 5.5,
+      floorFare: 480,
+      floorFareDetail: {
+        origin: 5,
+        dest: 10,
+        originHasElevator: false,
+        destHasElevator: true,
+        originSegments: [
+          { label: '2-4层', floors: 3, pricePerFloor: 25, amount: 75 },
+          { label: '5-6层', floors: 2, pricePerFloor: 38, amount: 76 },
+        ],
+        destSegments: [
+          { label: '有电梯', floors: 10, pricePerFloor: 12, amount: 120 },
+        ],
+      },
+      largeItemFare: movingLargeItemFareDetail.reduce((sum, item) => sum + item.subtotal, 0),
+      largeItemFareDetail: movingLargeItemFareDetail,
+      totalFare: 1580,
+    },
+    createdAt: new Date('2026-06-21T08:30:00'),
+    updatedAt: new Date('2026-06-21T08:30:00'),
+    logs: [
+      createOrderLog('o011', 'pending', '搬家订单创建成功，已选择大件物品清单', 0),
+    ],
+  },
   {
     id: 'o001',
     orderNo: 'HY2026062100001',

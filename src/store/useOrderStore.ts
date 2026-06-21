@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Order, OrderStatus, NewOrderForm } from '@/types';
+import type { Order, OrderStatus, NewOrderForm, SelectedLargeItem, LargeItemFareDetail } from '@/types';
 import { mockOrders, mockDrivers } from '@/mock';
 import { generateOrderNo } from '@/utils/format';
 
@@ -40,6 +40,7 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
       orderNo: generateOrderNo(),
       status: 'pending',
       cargoType: orderData.cargoType,
+      cargoScenario: orderData.cargoScenario,
       weight: orderData.weight,
       volume: orderData.volume,
       origin: orderData.origin,
@@ -52,6 +53,7 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
       appointmentTime: orderData.appointmentTime!,
       needHandling: orderData.needHandling,
       largeItemCount: orderData.largeItemCount,
+      largeItems: orderData.largeItems,
       distance: orderData.distance,
       totalFare: orderData.totalFare,
       fareDetail: orderData.fareDetail,

@@ -14,26 +14,53 @@ import {
   Calculator,
   X,
   Check,
+  Plus,
+  Minus,
+  Home,
+  ShoppingBag,
+  Utensils,
+  Wine,
+  AlertTriangle,
+  Grip,
 } from 'lucide-react';
 import Card from '@/components/Card';
 import Button from '@/components/Button';
 import { useOrderStore } from '@/store/useOrderStore';
 import { matchVehicle } from '@/services/vehicleService';
-import { calculateFare, VEHICLE_PRICING } from '@/services/fareService';
+import { calculateFare, VEHICLE_PRICING, LARGE_ITEMS } from '@/services/fareService';
 import { formatMoney } from '@/utils/format';
-import type { VehicleType, NewOrderForm, FareDetail } from '@/types';
+import type { VehicleType, NewOrderForm, FareDetail, SelectedLargeItem, CargoScenario } from '@/types';
 import { cn } from '@/lib/utils';
 
-const cargoTypes = [
-  { value: '普通货物', label: '普通货物' },
-  { value: '家具家电', label: '家具家电' },
-  { value: '建材', label: '建材' },
-  { value: '食品', label: '食品' },
-  { value: '易碎品', label: '易碎品' },
-  { value: '其他', label: '其他' },
+const scenarioOptions: { value: CargoScenario; label: string; icon: typeof Home }[] = [
+  { value: '普通货物', label: '普通货物', icon: Package },
+  { value: '家具家电', label: '家具家电', icon: ShoppingBag },
+  { value: '建材', label: '建材', icon: Grip },
+  { value: '食品', label: '食品', icon: Utensils },
+  { value: '易碎品', label: '易碎品', icon: AlertTriangle },
+  { value: '搬家', label: '搬家', icon: Home },
+  { value: '其他', label: '其他', icon: Wine },
 ];
 
 const vehicleTypes: VehicleType[] = ['van', 'small_truck', 'medium_truck', 'large_truck'];
+
+const getItemIcon = (iconName: string) => {
+  const iconMap: Record<string, typeof Home> = {
+    Fridge: Home,
+    WashingMachine: Package,
+    Sofa: Home,
+    Bed: Package,
+    Piano: ShoppingBag,
+    BedDouble: Home,
+    Wardrobe: Package,
+    Tv: ShoppingBag,
+    AirVent: AlertTriangle,
+    Table: Grip,
+    Laptop: ShoppingBag,
+    Armchair: Home,
+  };
+  return iconMap[iconName] || Package;
+};
 
 export default function NewOrder() {
   const navigate = useNavigate();
@@ -47,18 +74,22 @@ export default function NewOrder() {
     destFloor: 1,
     destHasElevator: true,
     cargoType: '普通货物',
+    cargoScenario: '普通货物',
     weight: 0,
     volume: 0,
     vehicleType: null,
     appointmentTime: null,
     needHandling: false,
     largeItemCount: 0,
+    largeItems: [],
     distance: 10,
   });
 
   const [recommendedVehicle, setRecommendedVehicle] = useState<VehicleType | null>(null);
   const [fareDetail, setFareDetail] = useState<FareDetail | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showLargeItemModal, setShowLargeItemModal] = useState(false);
+  const [selectedLargeItems, setSelectedLargeItems] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
     if (formData.weight > 0 || formData.volume > 0) {
@@ -81,6 +112,7 @@ export default function NewOrder() {
         destHasElevator: formData.destHasElevator,
         needHandling: formData.needHandling,
         largeItemCount: formData.largeItemCount,
+        largeItems: formData.largeItems,
       });
       setFareDetail(fare);
     }
@@ -93,6 +125,7 @@ export default function NewOrder() {
     formData.destHasElevator,
     formData.needHandling,
     formData.largeItemCount,
+    formData.largeItems,
   ]);
 
   const handleSwapLocations = () => {
@@ -111,6 +144,66 @@ export default function NewOrder() {
     if (recommendedVehicle) {
       setFormData((prev) => ({ ...prev, vehicleType: recommendedVehicle }));
     }
+  };
+
+  const handleScenarioChange = (scenario: CargoScenario) => {
+    setFormData((prev) => ({
+      ...prev,
+      cargoType: scenario,
+      cargoScenario: scenario,
+    }));
+
+    if (scenario === '搬家') {
+      setShowLargeItemModal(true);
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        largeItems: [],
+        largeItemCount: 0,
+      }));
+      setSelectedLargeItems(new Map());
+    }
+  };
+
+  const handleItemQuantityChange = (itemId: string, delta: number) => {
+    setSelectedLargeItems((prev) => {
+      const newMap = new Map(prev);
+      const current = newMap.get(itemId) || 0;
+      const newQuantity = Math.max(0, current + delta);
+      if (newQuantity === 0) {
+        newMap.delete(itemId);
+      } else {
+        newMap.set(itemId, newQuantity);
+      }
+      return newMap;
+    });
+  };
+
+  const handleConfirmLargeItems = () => {
+    const selectedItems: SelectedLargeItem[] = [];
+    let totalCount = 0;
+    let totalWeight = 0;
+    let totalVolume = 0;
+
+    selectedLargeItems.forEach((quantity, itemId) => {
+      const item = LARGE_ITEMS.find((i) => i.id === itemId);
+      if (item) {
+        selectedItems.push({ item, quantity });
+        totalCount += quantity;
+        totalWeight += (item.weight || 0) * quantity;
+        totalVolume += (item.volume || 0) * quantity;
+      }
+    });
+
+    setFormData((prev) => ({
+      ...prev,
+      largeItems: selectedItems,
+      largeItemCount: totalCount,
+      weight: totalWeight,
+      volume: totalVolume,
+    }));
+
+    setShowLargeItemModal(false);
   };
 
   const handleSubmit = async () => {
@@ -356,26 +449,74 @@ export default function NewOrder() {
         <Card title="货物信息">
           <div className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">货物类型</label>
-              <div className="flex flex-wrap gap-2">
-                {cargoTypes.map((type) => (
-                  <button
-                    key={type.value}
-                    onClick={() =>
-                      setFormData((prev) => ({ ...prev, cargoType: type.value }))
-                    }
-                    className={cn(
-                      'rounded-lg border px-4 py-2 text-sm transition-colors',
-                      formData.cargoType === type.value
-                        ? 'border-[#165DFF] bg-[#165DFF]/5 text-[#165DFF]'
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                    )}
-                  >
-                    {type.label}
-                  </button>
-                ))}
+              <label className="mb-2 block text-sm font-medium text-gray-700">使用场景</label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {scenarioOptions.map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <button
+                      key={option.value}
+                      onClick={() => handleScenarioChange(option.value)}
+                      className={cn(
+                        'flex flex-col items-center gap-2 rounded-lg border px-3 py-3 text-sm transition-colors',
+                        formData.cargoScenario === option.value
+                          ? 'border-[#165DFF] bg-[#165DFF]/5 text-[#165DFF]'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                      )}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span>{option.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
+
+            {formData.cargoScenario === '搬家' && (
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-700">大件物品清单</label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<Plus className="h-4 w-4" />}
+                    onClick={() => setShowLargeItemModal(true)}
+                  >
+                    编辑大件
+                  </Button>
+                </div>
+                {formData.largeItems && formData.largeItems.length > 0 ? (
+                  <div className="space-y-2 rounded-lg bg-gray-50 p-3">
+                    {formData.largeItems.map((selected) => {
+                      const ItemIcon = getItemIcon(selected.item.icon);
+                      return (
+                        <div
+                          key={selected.item.id}
+                          className="flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-2">
+                            <ItemIcon className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm text-gray-700">
+                              {selected.item.name} × {selected.quantity}
+                            </span>
+                          </div>
+                          <span className="text-sm text-orange-500">
+                            +{formatMoney(selected.item.handlingFee * selected.quantity)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    <div className="border-t border-gray-200 pt-2 text-xs text-gray-500">
+                      共 {formData.largeItemCount} 件大件
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-lg bg-orange-50 p-3 text-sm text-orange-600">
+                    请选择您的大件物品，系统将自动计算搬运费用
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -639,12 +780,25 @@ export default function NewOrder() {
                   ))}
                 </div>
               )}
-              {formData.largeItemCount > 0 && (
+              {fareDetail.largeItemFareDetail && fareDetail.largeItemFareDetail.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">大件费</span>
+                    <span className="text-gray-700">{formatMoney(fareDetail.largeItemFare)}</span>
+                  </div>
+                  {fareDetail.largeItemFareDetail.map((item) => (
+                    <div key={item.itemId} className="flex justify-between text-xs text-gray-400 pl-2">
+                      <span>{item.itemName}: {item.quantity}件 × {formatMoney(item.handlingFee)}/件</span>
+                      <span>{formatMoney(item.subtotal)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : formData.largeItemCount > 0 ? (
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">大件费</span>
                   <span className="text-gray-700">{formatMoney(fareDetail.largeItemFare)}</span>
                 </div>
-              )}
+              ) : null}
               <div className="border-t border-gray-100 pt-3">
                 <div className="flex items-end justify-between">
                   <span className="text-sm text-gray-500">预估总价</span>
@@ -685,6 +839,138 @@ export default function NewOrder() {
           </div>
         </div>
       </div>
+
+      {showLargeItemModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-200 p-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">选择大件物品</h3>
+                <p className="mt-1 text-sm text-gray-500">请选择您需要搬运的大件物品，每件将自动计算搬运费</p>
+              </div>
+              <button
+                onClick={() => setShowLargeItemModal(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="max-h-96 overflow-y-auto p-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {LARGE_ITEMS.map((item) => {
+                  const quantity = selectedLargeItems.get(item.id) || 0;
+                  const ItemIcon = getItemIcon(item.icon);
+                  return (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        'rounded-lg border-2 p-3 transition-all',
+                        quantity > 0
+                          ? 'border-[#165DFF] bg-[#165DFF]/5'
+                          : 'border-gray-200 bg-white'
+                      )}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={cn(
+                            'flex h-8 w-8 items-center justify-center rounded-lg',
+                            quantity > 0 ? 'bg-[#165DFF]/10' : 'bg-gray-100'
+                          )}>
+                            <ItemIcon className={cn(
+                              'h-4 w-4',
+                              quantity > 0 ? 'text-[#165DFF]' : 'text-gray-400'
+                            )} />
+                          </div>
+                          <div>
+                            <p className={cn(
+                              'text-sm font-medium',
+                              quantity > 0 ? 'text-[#165DFF]' : 'text-gray-800'
+                            )}>
+                              {item.name}
+                            </p>
+                            <p className="text-xs text-orange-500">
+                              +{formatMoney(item.handlingFee)}/件
+                            </p>
+                          </div>
+                        </div>
+                        {quantity > 0 && (
+                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#165DFF]">
+                            <Check className="h-3 w-3 text-white" />
+                          </div>
+                        )}
+                      </div>
+
+                      {item.description && (
+                        <p className="mt-1 text-xs text-gray-400">{item.description}</p>
+                      )}
+
+                      <div className="mt-3 flex items-center justify-between">
+                        <div className="text-xs text-gray-400">
+                          {item.weight && <span>约{item.weight * 1000}kg </span>}
+                          {item.volume && <span>{item.volume}m³</span>}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleItemQuantityChange(item.id, -1)}
+                            className={cn(
+                              'flex h-6 w-6 items-center justify-center rounded-full text-sm transition-colors',
+                              quantity > 0
+                                ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                : 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                            )}
+                            disabled={quantity === 0}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </button>
+                          <span className="w-6 text-center text-sm font-medium text-gray-700">
+                            {quantity}
+                          </span>
+                          <button
+                            onClick={() => handleItemQuantityChange(item.id, 1)}
+                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[#165DFF]/10 text-[#165DFF] hover:bg-[#165DFF]/20"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 bg-gray-50 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm text-gray-500">已选大件：</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    {Array.from(selectedLargeItems.values()).reduce((a, b) => a + b, 0)} 件
+                  </span>
+                  <span className="mx-2 text-gray-300">|</span>
+                  <span className="text-sm text-gray-500">预计搬运费：</span>
+                  <span className="text-lg font-bold text-orange-500">
+                    {formatMoney(
+                      Array.from(selectedLargeItems.entries()).reduce((total, [itemId, qty]) => {
+                        const item = LARGE_ITEMS.find((i) => i.id === itemId);
+                        return total + (item ? item.handlingFee * qty : 0);
+                      }, 0)
+                    )}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setShowLargeItemModal(false)}>
+                    取消
+                  </Button>
+                  <Button onClick={handleConfirmLargeItems}>
+                    确认选择
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

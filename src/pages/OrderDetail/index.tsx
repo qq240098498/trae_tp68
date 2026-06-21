@@ -19,6 +19,12 @@ import {
   Send,
   PackageCheck,
   ChevronRight,
+  Home,
+  ShoppingBag,
+  Utensils,
+  Wine,
+  AlertTriangle,
+  Grip,
 } from 'lucide-react';
 import { useOrderStore } from '@/store/useOrderStore';
 import { useDriverStore } from '@/store/useDriverStore';
@@ -30,13 +36,41 @@ import Empty from '@/components/Empty';
 import { formatMoney, formatDateTime, formatDistance } from '@/utils/format';
 import { mockVehicles } from '@/mock/vehicles';
 import { cn } from '@/lib/utils';
-import type { OrderStatus, VehicleType } from '@/types';
+import type { OrderStatus, VehicleType, CargoScenario } from '@/types';
 
 const vehicleTypeNames: Record<VehicleType, string> = {
   van: '面包车',
   small_truck: '小货车',
   medium_truck: '中货车',
   large_truck: '大货车',
+};
+
+const scenarioIconMap: Record<string, typeof Home> = {
+  '普通货物': Package,
+  '家具家电': ShoppingBag,
+  '建材': Grip,
+  '食品': Utensils,
+  '易碎品': AlertTriangle,
+  '搬家': Home,
+  '其他': Wine,
+};
+
+const getItemIcon = (iconName: string) => {
+  const iconMap: Record<string, typeof Home> = {
+    Fridge: Home,
+    WashingMachine: Package,
+    Sofa: Home,
+    Bed: Package,
+    Piano: ShoppingBag,
+    BedDouble: Home,
+    Wardrobe: Package,
+    Tv: ShoppingBag,
+    AirVent: AlertTriangle,
+    Table: Grip,
+    Laptop: ShoppingBag,
+    Armchair: Home,
+  };
+  return iconMap[iconName] || Package;
 };
 
 const statusActionMap: Record<OrderStatus, OrderStatus | null> = {
@@ -220,8 +254,11 @@ export default function OrderDetail() {
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               <div className="rounded-lg bg-gray-50 p-4">
                 <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-gray-500" />
-                  <span className="text-xs text-gray-500">货物类型</span>
+                  {(() => {
+                    const ScenarioIcon = scenarioIconMap[order.cargoType] || Package;
+                    return <ScenarioIcon className="h-4 w-4 text-gray-500" />;
+                  })()}
+                  <span className="text-xs text-gray-500">使用场景</span>
                 </div>
                 <p className="mt-2 text-base font-semibold text-gray-900">{order.cargoType}</p>
               </div>
@@ -247,6 +284,42 @@ export default function OrderDetail() {
                 <p className="mt-2 text-base font-semibold text-gray-900">{order.largeItemCount} 件</p>
               </div>
             </div>
+
+            {order.largeItems && order.largeItems.length > 0 && (
+              <div className="mt-4">
+                <h4 className="mb-2 text-sm font-medium text-gray-700">大件物品清单</h4>
+                <div className="rounded-lg border border-gray-200 bg-blue-50/50 p-3">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {order.largeItems.map((selected) => {
+                      const ItemIcon = getItemIcon(selected.item.icon);
+                      return (
+                        <div
+                          key={selected.item.id}
+                          className="flex items-center gap-2 rounded-lg bg-white p-2"
+                        >
+                          <ItemIcon className="h-4 w-4 text-blue-500" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-800 truncate">
+                              {selected.item.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              × {selected.quantity} 件
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 flex items-center gap-2 rounded-lg bg-blue-100/50 px-3 py-2">
+                    <Truck className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm text-blue-700">
+                      请司机提前确认配载空间，准备搬运工具
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {order.needHandling && (
               <div className="mt-4 rounded-lg bg-orange-50 p-3">
                 <div className="flex items-center gap-2">
@@ -316,12 +389,29 @@ export default function OrderDetail() {
                   </span>
                 </div>
               )}
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">大件费</span>
-                <span className="text-sm font-medium text-gray-900">
-                  {formatMoney(order.fareDetail.largeItemFare)}
-                </span>
-              </div>
+              {order.fareDetail.largeItemFareDetail && order.fareDetail.largeItemFareDetail.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">大件费</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {formatMoney(order.fareDetail.largeItemFare)}
+                    </span>
+                  </div>
+                  {order.fareDetail.largeItemFareDetail.map((item) => (
+                    <div key={item.itemId} className="flex justify-between text-xs text-gray-400 pl-2">
+                      <span>{item.itemName}: {item.quantity}件 × {formatMoney(item.handlingFee)}/件</span>
+                      <span>{formatMoney(item.subtotal)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">大件费</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {formatMoney(order.fareDetail.largeItemFare)}
+                  </span>
+                </div>
+              )}
               <div className="border-t border-gray-100 pt-3">
                 <div className="flex items-center justify-between">
                   <span className="text-base font-semibold text-gray-900">总计</span>

@@ -1,4 +1,115 @@
-import type { VehicleType, VehiclePricing, FareDetail, FloorFareDetail, FloorFareSegment } from '@/types';
+import type { VehicleType, VehiclePricing, FareDetail, FloorFareDetail, FloorFareSegment, LargeItem, SelectedLargeItem, LargeItemFareDetail } from '@/types';
+
+export const LARGE_ITEMS: LargeItem[] = [
+  {
+    id: 'fridge',
+    name: '冰箱',
+    icon: 'Fridge',
+    handlingFee: 80,
+    weight: 0.08,
+    volume: 1.5,
+    description: '双开门/单开门冰箱',
+  },
+  {
+    id: 'washing_machine',
+    name: '洗衣机',
+    icon: 'WashingMachine',
+    handlingFee: 50,
+    weight: 0.06,
+    volume: 0.8,
+    description: '滚筒/波轮洗衣机',
+  },
+  {
+    id: 'sofa',
+    name: '沙发',
+    icon: 'Sofa',
+    handlingFee: 100,
+    weight: 0.1,
+    volume: 3,
+    description: '三人位/组合沙发',
+  },
+  {
+    id: 'mattress',
+    name: '床垫',
+    icon: 'Bed',
+    handlingFee: 60,
+    weight: 0.03,
+    volume: 1.2,
+    description: '1.5米/1.8米床垫',
+  },
+  {
+    id: 'piano',
+    name: '钢琴',
+    icon: 'Piano',
+    handlingFee: 300,
+    weight: 0.25,
+    volume: 2,
+    description: '立式/三角钢琴',
+  },
+  {
+    id: 'bed',
+    name: '床架',
+    icon: 'BedDouble',
+    handlingFee: 80,
+    weight: 0.08,
+    volume: 1.8,
+    description: '实木/板式床架',
+  },
+  {
+    id: 'wardrobe',
+    name: '衣柜',
+    icon: 'Wardrobe',
+    handlingFee: 120,
+    weight: 0.12,
+    volume: 2.5,
+    description: '实木/板式衣柜',
+  },
+  {
+    id: 'tv',
+    name: '电视',
+    icon: 'Tv',
+    handlingFee: 50,
+    weight: 0.02,
+    volume: 0.5,
+    description: '55寸以上大屏电视',
+  },
+  {
+    id: 'air_conditioner',
+    name: '空调',
+    icon: 'AirVent',
+    handlingFee: 60,
+    weight: 0.04,
+    volume: 0.6,
+    description: '柜机/挂机空调',
+  },
+  {
+    id: 'dining_table',
+    name: '餐桌',
+    icon: 'Table',
+    handlingFee: 70,
+    weight: 0.06,
+    volume: 1.5,
+    description: '实木/玻璃餐桌',
+  },
+  {
+    id: 'desk',
+    name: '书桌',
+    icon: 'Laptop',
+    handlingFee: 50,
+    weight: 0.04,
+    volume: 1,
+    description: '电脑桌/写字台',
+  },
+  {
+    id: 'chair',
+    name: '椅子',
+    icon: 'Armchair',
+    handlingFee: 30,
+    weight: 0.015,
+    volume: 0.5,
+    description: '办公椅/餐椅',
+  },
+];
 
 export const VEHICLE_PRICING: Record<VehicleType, VehiclePricing> = {
   van: {
@@ -134,6 +245,27 @@ interface CalculateFareParams {
   destHasElevator: boolean;
   needHandling: boolean;
   largeItemCount: number;
+  largeItems?: SelectedLargeItem[];
+}
+
+export function calculateLargeItemFare(largeItems: SelectedLargeItem[], pricing: VehiclePricing): { total: number; detail: LargeItemFareDetail[] } {
+  let total = 0;
+  const detail: LargeItemFareDetail[] = [];
+
+  for (const selected of largeItems) {
+    const itemHandlingFee = Math.max(selected.item.handlingFee, pricing.largeItemPrice);
+    const subtotal = itemHandlingFee * selected.quantity;
+    total += subtotal;
+    detail.push({
+      itemId: selected.item.id,
+      itemName: selected.item.name,
+      quantity: selected.quantity,
+      handlingFee: itemHandlingFee,
+      subtotal,
+    });
+  }
+
+  return { total, detail };
 }
 
 export function calculateFare(params: CalculateFareParams): FareDetail {
@@ -146,6 +278,7 @@ export function calculateFare(params: CalculateFareParams): FareDetail {
     destHasElevator,
     needHandling,
     largeItemCount,
+    largeItems,
   } = params;
   const pricing = VEHICLE_PRICING[vehicleType];
 
@@ -173,7 +306,16 @@ export function calculateFare(params: CalculateFareParams): FareDetail {
     };
   }
 
-  const largeItemFare = largeItemCount * pricing.largeItemPrice;
+  let largeItemFare: number;
+  let largeItemFareDetail: LargeItemFareDetail[] | undefined;
+
+  if (largeItems && largeItems.length > 0) {
+    const result = calculateLargeItemFare(largeItems, pricing);
+    largeItemFare = result.total;
+    largeItemFareDetail = result.detail;
+  } else {
+    largeItemFare = largeItemCount * pricing.largeItemPrice;
+  }
 
   const totalFare = baseFare + mileageFare + floorFare + largeItemFare;
 
@@ -183,6 +325,7 @@ export function calculateFare(params: CalculateFareParams): FareDetail {
     floorFare,
     floorFareDetail,
     largeItemFare,
+    largeItemFareDetail,
     totalFare,
   };
 }
