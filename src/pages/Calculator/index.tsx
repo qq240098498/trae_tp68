@@ -323,7 +323,7 @@ export default function Calculator() {
                       <span className="text-gray-600">
                         楼层搬运费
                         <span className="text-xs text-gray-400">
-                          (起点{fareDetail.floorFareDetail.originHasElevator ? '有电梯' : '无电梯'} × {fareDetail.floorFareDetail.origin}层 + 
+                          (起点{fareDetail.floorFareDetail.originHasElevator ? '有电梯' : '无电梯'} × {fareDetail.floorFareDetail.origin}层 +
                            终点{fareDetail.floorFareDetail.destHasElevator ? '有电梯' : '无电梯'} × {fareDetail.floorFareDetail.dest}层)
                         </span>
                       </span>
@@ -331,18 +331,18 @@ export default function Calculator() {
                         {formatMoney(fareDetail.floorFare)}
                       </span>
                     </div>
-                    {fareDetail.floorFareDetail.origin > 0 && (
-                      <div className="flex justify-between text-xs text-gray-400 pl-2">
-                        <span>起点: {fareDetail.floorFareDetail.origin}层 × {formatMoney(fareDetail.floorFareDetail.originPricePerFloor)}/层</span>
-                        <span>{formatMoney(fareDetail.floorFareDetail.origin * fareDetail.floorFareDetail.originPricePerFloor)}</span>
+                    {fareDetail.floorFareDetail.originSegments.map((seg, idx) => (
+                      <div key={`o-${idx}`} className="flex justify-between text-xs text-gray-400 pl-2">
+                        <span>起点{seg.label}: {seg.floors}层 × {formatMoney(seg.pricePerFloor)}/层</span>
+                        <span>{formatMoney(seg.amount)}</span>
                       </div>
-                    )}
-                    {fareDetail.floorFareDetail.dest > 0 && (
-                      <div className="flex justify-between text-xs text-gray-400 pl-2">
-                        <span>终点: {fareDetail.floorFareDetail.dest}层 × {formatMoney(fareDetail.floorFareDetail.destPricePerFloor)}/层</span>
-                        <span>{formatMoney(fareDetail.floorFareDetail.dest * fareDetail.floorFareDetail.destPricePerFloor)}</span>
+                    ))}
+                    {fareDetail.floorFareDetail.destSegments.map((seg, idx) => (
+                      <div key={`d-${idx}`} className="flex justify-between text-xs text-gray-400 pl-2">
+                        <span>终点{seg.label}: {seg.floors}层 × {formatMoney(seg.pricePerFloor)}/层</span>
+                        <span>{formatMoney(seg.amount)}</span>
                       </div>
-                    )}
+                    ))}
                   </div>
                 )}
                 {largeItemCount > 0 && (

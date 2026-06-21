@@ -1,4 +1,4 @@
-import type { VehicleType, VehiclePricing, FareDetail, FloorFareDetail } from '@/types';
+import type { VehicleType, VehiclePricing, FareDetail, FloorFareDetail, FloorFareSegment } from '@/types';
 
 export const VEHICLE_PRICING: Record<VehicleType, VehiclePricing> = {
   van: {
@@ -71,6 +71,60 @@ export function getFloorPrice(floor: number, hasElevator: boolean, pricing: Vehi
   return pricing.floorPriceNoElevatorHigh;
 }
 
+export function calculateFloorFare(
+  floor: number,
+  hasElevator: boolean,
+  pricing: VehiclePricing,
+): { total: number; segments: FloorFareSegment[] } {
+  if (floor <= 1) return { total: 0, segments: [] };
+
+  const chargeableFloors = floor - 1;
+
+  if (hasElevator) {
+    const price = pricing.floorPriceElevator;
+    return {
+      total: chargeableFloors * price,
+      segments: [
+        {
+          label: '有电梯',
+          floors: chargeableFloors,
+          pricePerFloor: price,
+          amount: chargeableFloors * price,
+        },
+      ],
+    };
+  }
+
+  const segments: FloorFareSegment[] = [];
+  let total = 0;
+
+  const lowFloors = Math.min(floor, 4) - 1;
+  if (lowFloors > 0) {
+    const price = pricing.floorPriceNoElevatorLow;
+    const amount = lowFloors * price;
+    segments.push({ label: '2-4层', floors: lowFloors, pricePerFloor: price, amount });
+    total += amount;
+  }
+
+  const midFloors = floor >= 5 ? Math.min(floor, 6) - 4 : 0;
+  if (midFloors > 0) {
+    const price = pricing.floorPriceNoElevatorMid;
+    const amount = midFloors * price;
+    segments.push({ label: '5-6层', floors: midFloors, pricePerFloor: price, amount });
+    total += amount;
+  }
+
+  const highFloors = floor >= 7 ? floor - 6 : 0;
+  if (highFloors > 0) {
+    const price = pricing.floorPriceNoElevatorHigh;
+    const amount = highFloors * price;
+    segments.push({ label: '7层以上', floors: highFloors, pricePerFloor: price, amount });
+    total += amount;
+  }
+
+  return { total, segments };
+}
+
 interface CalculateFareParams {
   vehicleType: VehicleType;
   distance: number;
@@ -105,19 +159,17 @@ export function calculateFare(params: CalculateFareParams): FareDetail {
   let floorFareDetail: FloorFareDetail | undefined;
 
   if (needHandling) {
-    const originPricePerFloor = getFloorPrice(originFloor, originHasElevator, pricing);
-    const destPricePerFloor = getFloorPrice(destFloor, destHasElevator, pricing);
-    const originFare = Math.max(0, originFloor - 1) * originPricePerFloor;
-    const destFare = Math.max(0, destFloor - 1) * destPricePerFloor;
-    floorFare = originFare + destFare;
+    const originResult = calculateFloorFare(originFloor, originHasElevator, pricing);
+    const destResult = calculateFloorFare(destFloor, destHasElevator, pricing);
+    floorFare = originResult.total + destResult.total;
 
     floorFareDetail = {
       origin: Math.max(0, originFloor - 1),
       dest: Math.max(0, destFloor - 1),
       originHasElevator,
       destHasElevator,
-      originPricePerFloor,
-      destPricePerFloor,
+      originSegments: originResult.segments,
+      destSegments: destResult.segments,
     };
   }
 

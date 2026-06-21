@@ -37,13 +37,20 @@ export interface Driver {
   currentLat: number;
 }
 
+export interface FloorFareSegment {
+  label: string;
+  floors: number;
+  pricePerFloor: number;
+  amount: number;
+}
+
 export interface FloorFareDetail {
   origin: number;
   dest: number;
   originHasElevator: boolean;
   destHasElevator: boolean;
-  originPricePerFloor: number;
-  destPricePerFloor: number;
+  originSegments: FloorFareSegment[];
+  destSegments: FloorFareSegment[];
 }
 
 export interface FareDetail {
