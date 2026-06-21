@@ -675,7 +675,11 @@ export default function NewOrder() {
                 <Box className="h-5 w-5 text-gray-400" />
                 <div>
                   <p className="text-sm font-medium text-gray-800">大件数量</p>
-                  <p className="text-xs text-gray-500">大件物品额外收费</p>
+                  <p className="text-xs text-gray-500">
+                    {formData.cargoScenario === '搬家' && formData.largeItems && formData.largeItems.length > 0
+                      ? '由大件物品清单自动计算'
+                      : '大件物品额外收费'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center rounded-lg border border-gray-200">
@@ -684,13 +688,25 @@ export default function NewOrder() {
                     setFormData((prev) => ({
                       ...prev,
                       largeItemCount: Math.max(0, prev.largeItemCount - 1),
+                      largeItems: [],
                     }))
                   }
-                  className="flex h-8 w-8 items-center justify-center text-gray-500 hover:text-gray-700"
+                  disabled={formData.cargoScenario === '搬家' && formData.largeItems && formData.largeItems.length > 0}
+                  className={cn(
+                    'flex h-8 w-8 items-center justify-center transition-colors',
+                    formData.cargoScenario === '搬家' && formData.largeItems && formData.largeItems.length > 0
+                      ? 'text-gray-300 cursor-not-allowed'
+                      : 'text-gray-500 hover:text-gray-700'
+                  )}
                 >
                   <ChevronDown className="h-4 w-4" />
                 </button>
-                <span className="w-8 text-center text-sm text-gray-700">
+                <span className={cn(
+                  'w-8 text-center text-sm',
+                  formData.cargoScenario === '搬家' && formData.largeItems && formData.largeItems.length > 0
+                    ? 'text-[#165DFF] font-medium'
+                    : 'text-gray-700'
+                )}>
                   {formData.largeItemCount}
                 </span>
                 <button
@@ -698,9 +714,16 @@ export default function NewOrder() {
                     setFormData((prev) => ({
                       ...prev,
                       largeItemCount: prev.largeItemCount + 1,
+                      largeItems: [],
                     }))
                   }
-                  className="flex h-8 w-8 items-center justify-center text-gray-500 hover:text-gray-700"
+                  disabled={formData.cargoScenario === '搬家' && formData.largeItems && formData.largeItems.length > 0}
+                  className={cn(
+                    'flex h-8 w-8 items-center justify-center transition-colors',
+                    formData.cargoScenario === '搬家' && formData.largeItems && formData.largeItems.length > 0
+                      ? 'text-gray-300 cursor-not-allowed'
+                      : 'text-gray-500 hover:text-gray-700'
+                  )}
                 >
                   <ChevronUp className="h-4 w-4" />
                 </button>
