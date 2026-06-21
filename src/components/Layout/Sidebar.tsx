@@ -7,6 +7,7 @@ import {
   Map,
   Calculator,
   Truck,
+  Route,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +16,7 @@ const menuItems = [
   { path: '/orders', label: '订单管理', icon: Package },
   { path: '/drivers', label: '司机管理', icon: Users },
   { path: '/dispatch', label: '派单中心', icon: Send },
+  { path: '/backhaul', label: '回程带货', icon: Route },
   { path: '/tracking', label: '实时追踪', icon: Map },
   { path: '/calculator', label: '运费计算器', icon: Calculator },
 ];

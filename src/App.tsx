@@ -8,6 +8,7 @@ import Drivers from '@/pages/Drivers';
 import Dispatch from '@/pages/Dispatch';
 import Tracking from '@/pages/Tracking';
 import Calculator from '@/pages/Calculator';
+import Backhaul from '@/pages/Backhaul';
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/orders/:id" element={<OrderDetail />} />
           <Route path="/drivers" element={<Drivers />} />
           <Route path="/dispatch" element={<Dispatch />} />
+          <Route path="/backhaul" element={<Backhaul />} />
           <Route path="/tracking" element={<Tracking />} />
           <Route path="/calculator" element={<Calculator />} />
         </Route>

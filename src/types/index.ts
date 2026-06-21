@@ -168,3 +168,27 @@ export interface NewOrderForm {
   largeItems?: SelectedLargeItem[];
   distance: number;
 }
+
+export interface BackhaulMatchResult {
+  order: Order;
+  matchScore: number;
+  detourDistance: number;
+  originDistance: number;
+  destinationDistance: number;
+  estimatedSavings: number;
+  timeMatch: number;
+}
+
+export interface BackhaulRecommendation {
+  driverId: string;
+  completedOrderId: string;
+  recommendations: BackhaulMatchResult[];
+  createdAt: Date;
+}
+
+export interface OrderWithLocation extends Order {
+  originLng?: number;
+  originLat?: number;
+  destLng?: number;
+  destLat?: number;
+}

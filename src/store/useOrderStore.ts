@@ -1,12 +1,15 @@
 import { create } from 'zustand';
-import type { Order, OrderStatus, NewOrderForm, SelectedLargeItem, LargeItemFareDetail } from '@/types';
+import type { Order, OrderStatus, NewOrderForm, SelectedLargeItem, LargeItemFareDetail, BackhaulMatchResult } from '@/types';
 import { mockOrders, mockDrivers } from '@/mock';
 import { generateOrderNo } from '@/utils/format';
+import { searchBackhaulOrders, getBackhaulRecommendationsForDriver } from '@/services/backhaulService';
 
 interface OrderStore {
   orders: Order[];
   loading: boolean;
   selectedOrder: Order | null;
+  backhaulRecommendations: BackhaulMatchResult[];
+  backhaulLoading: boolean;
   fetchOrders: () => Promise<void>;
   getOrderById: (id: string) => Order | undefined;
   createOrder: (orderData: NewOrderForm & { totalFare: number; fareDetail: Order['fareDetail'] }) => Promise<Order>;
@@ -16,12 +19,17 @@ interface OrderStore {
   getPendingOrders: () => Order[];
   getActiveOrders: () => Order[];
   setSelectedOrder: (order: Order | null) => void;
+  searchBackhaulForOrder: (completedOrderId: string) => Promise<BackhaulMatchResult[]>;
+  searchBackhaulForDriver: (driverId: string) => Promise<BackhaulMatchResult[]>;
+  clearBackhaulRecommendations: () => void;
 }
 
 export const useOrderStore = create<OrderStore>((set, get) => ({
   orders: [],
   loading: false,
   selectedOrder: null,
+  backhaulRecommendations: [],
+  backhaulLoading: false,
 
   fetchOrders: async () => {
     set({ loading: true });
@@ -165,5 +173,33 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
 
   setSelectedOrder: (order: Order | null) => {
     set({ selectedOrder: order });
+  },
+
+  searchBackhaulForOrder: async (completedOrderId: string) => {
+    set({ backhaulLoading: true });
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    const completedOrder = get().getOrderById(completedOrderId);
+    if (!completedOrder) {
+      set({ backhaulLoading: false, backhaulRecommendations: [] });
+      return [];
+    }
+
+    const recommendations = searchBackhaulOrders(completedOrder, get().orders);
+    set({ backhaulRecommendations: recommendations, backhaulLoading: false });
+    return recommendations;
+  },
+
+  searchBackhaulForDriver: async (driverId: string) => {
+    set({ backhaulLoading: true });
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    const recommendations = getBackhaulRecommendationsForDriver(driverId, get().orders);
+    set({ backhaulRecommendations: recommendations, backhaulLoading: false });
+    return recommendations;
+  },
+
+  clearBackhaulRecommendations: () => {
+    set({ backhaulRecommendations: [] });
   },
 }));

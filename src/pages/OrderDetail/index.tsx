@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import type { ComponentType } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
   MapPin,
@@ -25,6 +25,10 @@ import {
   Wine,
   AlertTriangle,
   Grip,
+  Route,
+  TrendingUp,
+  Zap,
+  RefreshCw,
 } from 'lucide-react';
 import { useOrderStore } from '@/store/useOrderStore';
 import { useDriverStore } from '@/store/useDriverStore';
@@ -36,7 +40,8 @@ import Empty from '@/components/Empty';
 import { formatMoney, formatDateTime, formatDistance } from '@/utils/format';
 import { mockVehicles } from '@/mock/vehicles';
 import { cn } from '@/lib/utils';
-import type { OrderStatus, VehicleType, CargoScenario } from '@/types';
+import { formatMatchScore } from '@/services/backhaulService';
+import type { OrderStatus, VehicleType, CargoScenario, BackhaulMatchResult } from '@/types';
 
 const vehicleTypeNames: Record<VehicleType, string> = {
   van: '面包车',
@@ -100,9 +105,20 @@ const actionButtonConfig: Partial<Record<OrderStatus, { label: string; icon: Com
 export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { orders, fetchOrders, getOrderById, updateOrderStatus, assignDriver, loading } = useOrderStore();
+  const {
+    orders,
+    fetchOrders,
+    getOrderById,
+    updateOrderStatus,
+    assignDriver,
+    loading,
+    backhaulRecommendations,
+    backhaulLoading,
+    searchBackhaulForOrder,
+  } = useOrderStore();
   const { fetchDrivers, getAvailableDrivers } = useDriverStore();
   const [showDriverModal, setShowDriverModal] = useState(false);
+  const [backhaulSearched, setBackhaulSearched] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -110,6 +126,13 @@ export default function OrderDetail() {
   }, [fetchOrders, fetchDrivers]);
 
   const order = getOrderById(id || '');
+
+  useEffect(() => {
+    if (order && order.status === 'completed' && !backhaulSearched) {
+      searchBackhaulForOrder(order.id);
+      setBackhaulSearched(true);
+    }
+  }, [order, backhaulSearched, searchBackhaulForOrder]);
 
   const vehicle = useMemo(() => {
     if (order?.driver?.vehicleId) {
@@ -123,6 +146,12 @@ export default function OrderDetail() {
     const nextStatus = statusActionMap[order.status];
     if (nextStatus) {
       updateOrderStatus(order.id, nextStatus);
+      if (nextStatus === 'completed') {
+        setTimeout(() => {
+          searchBackhaulForOrder(order.id);
+          setBackhaulSearched(true);
+        }, 500);
+      }
     }
   };
 
@@ -551,6 +580,88 @@ export default function OrderDetail() {
               </div>
             )}
           </Card>
+
+          {order.status === 'completed' && (
+            <Card
+              title={
+                <div className="flex items-center gap-2">
+                  <Route className="h-5 w-5 text-green-600" />
+                  <span>回程订单推荐</span>
+                </div>
+              }
+            >
+              {backhaulLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="h-6 w-6 animate-spin text-blue-500" />
+                  <span className="ml-2 text-sm text-gray-500">正在智能匹配...</span>
+                </div>
+              ) : backhaulRecommendations.length === 0 ? (
+                <div className="py-6 text-center">
+                  <Route className="mx-auto h-10 w-10 text-gray-300" />
+                  <p className="mt-2 text-sm text-gray-400">暂无顺路回程订单</p>
+                  <Link to="/backhaul">
+                    <Button variant="outline" size="sm" className="mt-3">
+                      查看更多
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {backhaulRecommendations.slice(0, 3).map((recommendation) => {
+                    const { order: backhaulOrder, matchScore, estimatedSavings } = recommendation;
+                    const matchInfo = formatMatchScore(matchScore);
+                    return (
+                      <div
+                        key={backhaulOrder.id}
+                        className="rounded-lg border border-gray-200 p-3 hover:border-green-300 hover:bg-green-50/50 transition-colors cursor-pointer"
+                        onClick={() => navigate(`/orders/${backhaulOrder.id}`)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={cn(
+                              'flex h-8 w-8 items-center justify-center rounded-lg',
+                              matchScore >= 60 ? 'bg-green-100' : 'bg-blue-100'
+                            )}>
+                              <TrendingUp className={cn(
+                                'h-4 w-4',
+                                matchScore >= 60 ? 'text-green-600' : 'text-blue-600'
+                              )} />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-800">{backhaulOrder.orderNo}</p>
+                              <p className={cn('text-xs font-medium', matchInfo.color)}>
+                                {matchInfo.level} · {matchScore}%
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-bold text-orange-500">{formatMoney(backhaulOrder.totalFare)}</p>
+                            <p className="text-xs text-green-600">省{formatMoney(estimatedSavings)}</p>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
+                          <MapPin className="h-3 w-3 text-green-500" />
+                          <span className="truncate">{backhaulOrder.origin}</span>
+                        </div>
+                        <div className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+                          <MapPin className="h-3 w-3 text-red-500" />
+                          <span className="truncate">{backhaulOrder.destination}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {backhaulRecommendations.length > 3 && (
+                    <Link to="/backhaul" className="block">
+                      <Button variant="outline" size="sm" className="w-full">
+                        查看全部 {backhaulRecommendations.length} 条推荐
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              )}
+            </Card>
+          )}
 
           {actionConfig && (
             <Card>
