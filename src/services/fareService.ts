@@ -1,4 +1,4 @@
-import type { VehicleType, VehiclePricing, FareDetail } from '@/types';
+import type { VehicleType, VehiclePricing, FareDetail, FloorFareDetail } from '@/types';
 
 export const VEHICLE_PRICING: Record<VehicleType, VehiclePricing> = {
   van: {
@@ -7,7 +7,10 @@ export const VEHICLE_PRICING: Record<VehicleType, VehiclePricing> = {
     baseFare: 30,
     mileagePrice: 3,
     baseMileage: 5,
-    floorPrice: 10,
+    floorPriceElevator: 5,
+    floorPriceNoElevatorLow: 10,
+    floorPriceNoElevatorMid: 15,
+    floorPriceNoElevatorHigh: 20,
     largeItemPrice: 20,
     loadCapacity: 0.5,
     volumeCapacity: 3,
@@ -19,7 +22,10 @@ export const VEHICLE_PRICING: Record<VehicleType, VehiclePricing> = {
     baseFare: 55,
     mileagePrice: 4,
     baseMileage: 5,
-    floorPrice: 15,
+    floorPriceElevator: 8,
+    floorPriceNoElevatorLow: 15,
+    floorPriceNoElevatorMid: 22,
+    floorPriceNoElevatorHigh: 30,
     largeItemPrice: 30,
     loadCapacity: 1,
     volumeCapacity: 6,
@@ -31,7 +37,10 @@ export const VEHICLE_PRICING: Record<VehicleType, VehiclePricing> = {
     baseFare: 120,
     mileagePrice: 5.5,
     baseMileage: 5,
-    floorPrice: 25,
+    floorPriceElevator: 12,
+    floorPriceNoElevatorLow: 25,
+    floorPriceNoElevatorMid: 38,
+    floorPriceNoElevatorHigh: 50,
     largeItemPrice: 50,
     loadCapacity: 2.5,
     volumeCapacity: 15,
@@ -43,7 +52,10 @@ export const VEHICLE_PRICING: Record<VehicleType, VehiclePricing> = {
     baseFare: 200,
     mileagePrice: 7,
     baseMileage: 5,
-    floorPrice: 40,
+    floorPriceElevator: 20,
+    floorPriceNoElevatorLow: 40,
+    floorPriceNoElevatorMid: 60,
+    floorPriceNoElevatorHigh: 80,
     largeItemPrice: 80,
     loadCapacity: 5,
     volumeCapacity: 35,
@@ -51,17 +63,36 @@ export const VEHICLE_PRICING: Record<VehicleType, VehiclePricing> = {
   },
 };
 
+export function getFloorPrice(floor: number, hasElevator: boolean, pricing: VehiclePricing): number {
+  if (floor <= 1) return 0;
+  if (hasElevator) return pricing.floorPriceElevator;
+  if (floor >= 2 && floor <= 4) return pricing.floorPriceNoElevatorLow;
+  if (floor >= 5 && floor <= 6) return pricing.floorPriceNoElevatorMid;
+  return pricing.floorPriceNoElevatorHigh;
+}
+
 interface CalculateFareParams {
   vehicleType: VehicleType;
   distance: number;
   originFloor: number;
+  originHasElevator: boolean;
   destFloor: number;
+  destHasElevator: boolean;
   needHandling: boolean;
   largeItemCount: number;
 }
 
 export function calculateFare(params: CalculateFareParams): FareDetail {
-  const { vehicleType, distance, originFloor, destFloor, needHandling, largeItemCount } = params;
+  const {
+    vehicleType,
+    distance,
+    originFloor,
+    originHasElevator,
+    destFloor,
+    destHasElevator,
+    needHandling,
+    largeItemCount,
+  } = params;
   const pricing = VEHICLE_PRICING[vehicleType];
 
   const baseFare = pricing.baseFare;
@@ -70,9 +101,25 @@ export function calculateFare(params: CalculateFareParams): FareDetail {
     ? (distance - pricing.baseMileage) * pricing.mileagePrice
     : 0;
 
-  const floorFare = needHandling
-    ? Math.max(0, originFloor - 1 + destFloor - 1) * pricing.floorPrice
-    : 0;
+  let floorFare = 0;
+  let floorFareDetail: FloorFareDetail | undefined;
+
+  if (needHandling) {
+    const originPricePerFloor = getFloorPrice(originFloor, originHasElevator, pricing);
+    const destPricePerFloor = getFloorPrice(destFloor, destHasElevator, pricing);
+    const originFare = Math.max(0, originFloor - 1) * originPricePerFloor;
+    const destFare = Math.max(0, destFloor - 1) * destPricePerFloor;
+    floorFare = originFare + destFare;
+
+    floorFareDetail = {
+      origin: Math.max(0, originFloor - 1),
+      dest: Math.max(0, destFloor - 1),
+      originHasElevator,
+      destHasElevator,
+      originPricePerFloor,
+      destPricePerFloor,
+    };
+  }
 
   const largeItemFare = largeItemCount * pricing.largeItemPrice;
 
@@ -82,6 +129,7 @@ export function calculateFare(params: CalculateFareParams): FareDetail {
     baseFare,
     mileageFare,
     floorFare,
+    floorFareDetail,
     largeItemFare,
     totalFare,
   };

@@ -29,6 +29,7 @@ import SimpleMap from '@/components/Map/SimpleMap';
 import Empty from '@/components/Empty';
 import { formatMoney, formatDateTime, formatDistance } from '@/utils/format';
 import { mockVehicles } from '@/mock/vehicles';
+import { cn } from '@/lib/utils';
 import type { OrderStatus, VehicleType } from '@/types';
 
 const vehicleTypeNames: Record<VehicleType, string> = {
@@ -174,6 +175,14 @@ export default function OrderDetail() {
                           {order.originFloor}楼
                         </span>
                       )}
+                      <span className={cn(
+                        'rounded px-2 py-0.5 text-xs',
+                        order.originHasElevator
+                          ? 'bg-green-50 text-green-600'
+                          : 'bg-orange-50 text-orange-600'
+                      )}>
+                        {order.originHasElevator ? '有电梯' : '无电梯'}
+                      </span>
                     </div>
                     <p className="mt-1 text-sm font-medium text-gray-900">{order.origin}</p>
                   </div>
@@ -185,6 +194,14 @@ export default function OrderDetail() {
                           {order.destFloor}楼
                         </span>
                       )}
+                      <span className={cn(
+                        'rounded px-2 py-0.5 text-xs',
+                        order.destHasElevator
+                          ? 'bg-green-50 text-green-600'
+                          : 'bg-orange-50 text-orange-600'
+                      )}>
+                        {order.destHasElevator ? '有电梯' : '无电梯'}
+                      </span>
                     </div>
                     <p className="mt-1 text-sm font-medium text-gray-900">{order.destination}</p>
                   </div>
@@ -264,12 +281,41 @@ export default function OrderDetail() {
                   {formatMoney(order.fareDetail.mileageFare)}
                 </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">楼层费</span>
-                <span className="text-sm font-medium text-gray-900">
-                  {formatMoney(order.fareDetail.floorFare)}
-                </span>
-              </div>
+              {order.fareDetail.floorFareDetail ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">
+                      楼层费
+                      <span className="ml-1 text-xs text-gray-400">
+                        (起点{order.fareDetail.floorFareDetail.originHasElevator ? '有电梯' : '无电梯'} × {order.fareDetail.floorFareDetail.origin}层 + 
+                         终点{order.fareDetail.floorFareDetail.destHasElevator ? '有电梯' : '无电梯'} × {order.fareDetail.floorFareDetail.dest}层)
+                      </span>
+                    </span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {formatMoney(order.fareDetail.floorFare)}
+                    </span>
+                  </div>
+                  {order.fareDetail.floorFareDetail.origin > 0 && (
+                    <div className="flex justify-between text-xs text-gray-400 pl-2">
+                      <span>起点: {order.fareDetail.floorFareDetail.origin}层 × {formatMoney(order.fareDetail.floorFareDetail.originPricePerFloor)}/层</span>
+                      <span>{formatMoney(order.fareDetail.floorFareDetail.origin * order.fareDetail.floorFareDetail.originPricePerFloor)}</span>
+                    </div>
+                  )}
+                  {order.fareDetail.floorFareDetail.dest > 0 && (
+                    <div className="flex justify-between text-xs text-gray-400 pl-2">
+                      <span>终点: {order.fareDetail.floorFareDetail.dest}层 × {formatMoney(order.fareDetail.floorFareDetail.destPricePerFloor)}/层</span>
+                      <span>{formatMoney(order.fareDetail.floorFareDetail.dest * order.fareDetail.floorFareDetail.destPricePerFloor)}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">楼层费</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {formatMoney(order.fareDetail.floorFare)}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">大件费</span>
                 <span className="text-sm font-medium text-gray-900">

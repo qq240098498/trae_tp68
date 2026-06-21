@@ -26,7 +26,9 @@ export default function Calculator() {
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleType>('van');
   const [distance, setDistance] = useState<number>(10);
   const [originFloor, setOriginFloor] = useState<number>(1);
+  const [originHasElevator, setOriginHasElevator] = useState<boolean>(true);
   const [destFloor, setDestFloor] = useState<number>(1);
+  const [destHasElevator, setDestHasElevator] = useState<boolean>(true);
   const [needHandling, setNeedHandling] = useState<boolean>(false);
   const [largeItemCount, setLargeItemCount] = useState<number>(0);
 
@@ -35,11 +37,13 @@ export default function Calculator() {
       vehicleType: selectedVehicle,
       distance,
       originFloor,
+      originHasElevator,
       destFloor,
+      destHasElevator,
       needHandling,
       largeItemCount,
     });
-  }, [selectedVehicle, distance, originFloor, destFloor, needHandling, largeItemCount]);
+  }, [selectedVehicle, distance, originFloor, originHasElevator, destFloor, destHasElevator, needHandling, largeItemCount]);
 
   const pricing = VEHICLE_PRICING[selectedVehicle];
   const VehicleIcon = vehicleIcons[selectedVehicle];
@@ -164,28 +168,54 @@ export default function Calculator() {
                     <Building2 className="h-4 w-4 text-green-500" />
                     起点楼层
                   </label>
-                  <input
-                    type="number"
-                    value={originFloor}
-                    onChange={handleOriginFloorChange}
-                    min="1"
-                    max="30"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#165DFF] focus:outline-none focus:ring-2 focus:ring-[#165DFF]/20"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={originFloor}
+                      onChange={handleOriginFloorChange}
+                      min="1"
+                      max="30"
+                      className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#165DFF] focus:outline-none focus:ring-2 focus:ring-[#165DFF]/20"
+                    />
+                    <button
+                      onClick={() => setOriginHasElevator(!originHasElevator)}
+                      className={cn(
+                        'w-20 rounded-lg border text-sm font-medium transition-colors',
+                        originHasElevator
+                          ? 'border-green-500 bg-green-50 text-green-600'
+                          : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-gray-400'
+                      )}
+                    >
+                      {originHasElevator ? '有电梯' : '无电梯'}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
                     <Building2 className="h-4 w-4 text-red-500" />
                     终点楼层
                   </label>
-                  <input
-                    type="number"
-                    value={destFloor}
-                    onChange={handleDestFloorChange}
-                    min="1"
-                    max="30"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#165DFF] focus:outline-none focus:ring-2 focus:ring-[#165DFF]/20"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={destFloor}
+                      onChange={handleDestFloorChange}
+                      min="1"
+                      max="30"
+                      className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#165DFF] focus:outline-none focus:ring-2 focus:ring-[#165DFF]/20"
+                    />
+                    <button
+                      onClick={() => setDestHasElevator(!destHasElevator)}
+                      className={cn(
+                        'w-20 rounded-lg border text-sm font-medium transition-colors',
+                        destHasElevator
+                          ? 'border-green-500 bg-green-50 text-green-600'
+                          : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-gray-400'
+                      )}
+                    >
+                      {destHasElevator ? '有电梯' : '无电梯'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -195,7 +225,7 @@ export default function Calculator() {
                   <div>
                     <p className="text-sm font-medium text-gray-800">需要搬运服务</p>
                     <p className="text-xs text-gray-500">
-                      搬运费：{formatMoney(pricing.floorPrice)}/层
+                      有电梯 {formatMoney(pricing.floorPriceElevator)}/层，无电梯 2-4层 {formatMoney(pricing.floorPriceNoElevatorLow)}/层，5-6层 {formatMoney(pricing.floorPriceNoElevatorMid)}/层，7层以上 {formatMoney(pricing.floorPriceNoElevatorHigh)}/层
                     </p>
                   </div>
                 </div>
@@ -287,18 +317,32 @@ export default function Calculator() {
                     {formatMoney(fareDetail.mileageFare)}
                   </span>
                 </div>
-                {needHandling && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">
-                      楼层搬运费
-                      <span className="text-xs text-gray-400">
-                        ({Math.max(0, originFloor - 1) + Math.max(0, destFloor - 1)}层 ×{' '}
-                        {formatMoney(pricing.floorPrice)}/层)
+                {needHandling && fareDetail.floorFareDetail && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">
+                        楼层搬运费
+                        <span className="text-xs text-gray-400">
+                          (起点{fareDetail.floorFareDetail.originHasElevator ? '有电梯' : '无电梯'} × {fareDetail.floorFareDetail.origin}层 + 
+                           终点{fareDetail.floorFareDetail.destHasElevator ? '有电梯' : '无电梯'} × {fareDetail.floorFareDetail.dest}层)
+                        </span>
                       </span>
-                    </span>
-                    <span className="font-medium text-gray-800">
-                      {formatMoney(fareDetail.floorFare)}
-                    </span>
+                      <span className="font-medium text-gray-800">
+                        {formatMoney(fareDetail.floorFare)}
+                      </span>
+                    </div>
+                    {fareDetail.floorFareDetail.origin > 0 && (
+                      <div className="flex justify-between text-xs text-gray-400 pl-2">
+                        <span>起点: {fareDetail.floorFareDetail.origin}层 × {formatMoney(fareDetail.floorFareDetail.originPricePerFloor)}/层</span>
+                        <span>{formatMoney(fareDetail.floorFareDetail.origin * fareDetail.floorFareDetail.originPricePerFloor)}</span>
+                      </div>
+                    )}
+                    {fareDetail.floorFareDetail.dest > 0 && (
+                      <div className="flex justify-between text-xs text-gray-400 pl-2">
+                        <span>终点: {fareDetail.floorFareDetail.dest}层 × {formatMoney(fareDetail.floorFareDetail.destPricePerFloor)}/层</span>
+                        <span>{formatMoney(fareDetail.floorFareDetail.dest * fareDetail.floorFareDetail.destPricePerFloor)}</span>
+                      </div>
+                    )}
                   </div>
                 )}
                 {largeItemCount > 0 && (

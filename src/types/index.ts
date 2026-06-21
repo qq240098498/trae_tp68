@@ -37,10 +37,20 @@ export interface Driver {
   currentLat: number;
 }
 
+export interface FloorFareDetail {
+  origin: number;
+  dest: number;
+  originHasElevator: boolean;
+  destHasElevator: boolean;
+  originPricePerFloor: number;
+  destPricePerFloor: number;
+}
+
 export interface FareDetail {
   baseFare: number;
   mileageFare: number;
   floorFare: number;
+  floorFareDetail?: FloorFareDetail;
   largeItemFare: number;
   totalFare: number;
 }
@@ -62,8 +72,10 @@ export interface Order {
   volume: number;
   origin: string;
   originFloor: number;
+  originHasElevator: boolean;
   destination: string;
   destFloor: number;
+  destHasElevator: boolean;
   vehicleType: VehicleType;
   appointmentTime: Date;
   needHandling: boolean;
@@ -88,7 +100,10 @@ export interface VehiclePricing {
   baseFare: number;
   mileagePrice: number;
   baseMileage: number;
-  floorPrice: number;
+  floorPriceElevator: number;
+  floorPriceNoElevatorLow: number;
+  floorPriceNoElevatorMid: number;
+  floorPriceNoElevatorHigh: number;
   largeItemPrice: number;
   loadCapacity: number;
   volumeCapacity: number;
@@ -103,8 +118,10 @@ export interface LocationPoint {
 export interface NewOrderForm {
   origin: string;
   originFloor: number;
+  originHasElevator: boolean;
   destination: string;
   destFloor: number;
+  destHasElevator: boolean;
   cargoType: string;
   weight: number;
   volume: number;

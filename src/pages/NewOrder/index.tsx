@@ -42,8 +42,10 @@ export default function NewOrder() {
   const [formData, setFormData] = useState<NewOrderForm>({
     origin: '',
     originFloor: 1,
+    originHasElevator: true,
     destination: '',
     destFloor: 1,
+    destHasElevator: true,
     cargoType: '普通货物',
     weight: 0,
     volume: 0,
@@ -74,7 +76,9 @@ export default function NewOrder() {
         vehicleType: formData.vehicleType,
         distance: formData.distance,
         originFloor: formData.originFloor,
+        originHasElevator: formData.originHasElevator,
         destFloor: formData.destFloor,
+        destHasElevator: formData.destHasElevator,
         needHandling: formData.needHandling,
         largeItemCount: formData.largeItemCount,
       });
@@ -84,7 +88,9 @@ export default function NewOrder() {
     formData.vehicleType,
     formData.distance,
     formData.originFloor,
+    formData.originHasElevator,
     formData.destFloor,
+    formData.destHasElevator,
     formData.needHandling,
     formData.largeItemCount,
   ]);
@@ -96,6 +102,8 @@ export default function NewOrder() {
       destination: prev.origin,
       originFloor: prev.destFloor,
       destFloor: prev.originFloor,
+      originHasElevator: prev.destHasElevator,
+      destHasElevator: prev.originHasElevator,
     }));
   };
 
@@ -164,7 +172,7 @@ export default function NewOrder() {
                       className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-[#165DFF] focus:outline-none focus:ring-2 focus:ring-[#165DFF]/10"
                     />
                   </div>
-                  <div className="w-28">
+                  <div className="w-40">
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">
                       楼层
                     </label>
@@ -207,6 +215,27 @@ export default function NewOrder() {
                       </button>
                     </div>
                   </div>
+                  <div className="w-24">
+                    <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                      电梯
+                    </label>
+                    <button
+                      onClick={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          originHasElevator: !prev.originHasElevator,
+                        }))
+                      }
+                      className={cn(
+                        'h-10 w-full rounded-lg border text-sm font-medium transition-colors',
+                        formData.originHasElevator
+                          ? 'border-green-500 bg-green-50 text-green-600'
+                          : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-gray-400'
+                      )}
+                    >
+                      {formData.originHasElevator ? '有电梯' : '无电梯'}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex justify-center">
@@ -233,7 +262,7 @@ export default function NewOrder() {
                       className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-[#165DFF] focus:outline-none focus:ring-2 focus:ring-[#165DFF]/10"
                     />
                   </div>
-                  <div className="w-28">
+                  <div className="w-40">
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">
                       楼层
                     </label>
@@ -275,6 +304,27 @@ export default function NewOrder() {
                         <ChevronUp className="h-4 w-4" />
                       </button>
                     </div>
+                  </div>
+                  <div className="w-24">
+                    <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                      电梯
+                    </label>
+                    <button
+                      onClick={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          destHasElevator: !prev.destHasElevator,
+                        }))
+                      }
+                      className={cn(
+                        'h-10 w-full rounded-lg border text-sm font-medium transition-colors',
+                        formData.destHasElevator
+                          ? 'border-green-500 bg-green-50 text-green-600'
+                          : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-gray-400'
+                      )}
+                    >
+                      {formData.destHasElevator ? '有电梯' : '无电梯'}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -563,10 +613,30 @@ export default function NewOrder() {
                 <span className="text-gray-500">里程费</span>
                 <span className="text-gray-700">{formatMoney(fareDetail.mileageFare)}</span>
               </div>
-              {formData.needHandling && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">楼层费</span>
-                  <span className="text-gray-700">{formatMoney(fareDetail.floorFare)}</span>
+              {formData.needHandling && fareDetail.floorFareDetail && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">
+                      楼层费
+                      <span className="ml-1 text-xs text-gray-400">
+                        (起点{fareDetail.floorFareDetail.originHasElevator ? '有电梯' : '无电梯'} × {fareDetail.floorFareDetail.origin}层 + 
+                         终点{fareDetail.floorFareDetail.destHasElevator ? '有电梯' : '无电梯'} × {fareDetail.floorFareDetail.dest}层)
+                      </span>
+                    </span>
+                    <span className="text-gray-700">{formatMoney(fareDetail.floorFare)}</span>
+                  </div>
+                  {fareDetail.floorFareDetail.origin > 0 && (
+                    <div className="flex justify-between text-xs text-gray-400 pl-2">
+                      <span>起点: {fareDetail.floorFareDetail.origin}层 × {formatMoney(fareDetail.floorFareDetail.originPricePerFloor)}/层</span>
+                      <span>{formatMoney(fareDetail.floorFareDetail.origin * fareDetail.floorFareDetail.originPricePerFloor)}</span>
+                    </div>
+                  )}
+                  {fareDetail.floorFareDetail.dest > 0 && (
+                    <div className="flex justify-between text-xs text-gray-400 pl-2">
+                      <span>终点: {fareDetail.floorFareDetail.dest}层 × {formatMoney(fareDetail.floorFareDetail.destPricePerFloor)}/层</span>
+                      <span>{formatMoney(fareDetail.floorFareDetail.dest * fareDetail.floorFareDetail.destPricePerFloor)}</span>
+                    </div>
+                  )}
                 </div>
               )}
               {formData.largeItemCount > 0 && (
